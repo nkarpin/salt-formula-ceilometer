@@ -1,0 +1,6 @@
+parameters:
+  ceilometer:
+    server:
+      publisher:
+        panko:
+          enabled: true

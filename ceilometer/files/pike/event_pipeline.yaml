@@ -1,0 +1,28 @@
+{%- from "ceilometer/map.jinja" import server with context %}
+{%- from "ceilometer/map.jinja" import agent with context %}
+{%- if server.get('enabled', False) %}
+{%- set ceilometer = server %}
+{%- else %}
+{%- set ceilometer = agent %}
+{%- endif %}
+{%- set publisher = ceilometer.publisher %}
+
+---
+sources:
+    - name: event_source
+      events:
+          - "*"
+      sinks:
+          - event_sink
+sinks:
+    - name: event_sink
+      transformers:
+      publishers:
+      {%- for publisher_name, publisher in publisher.items() %}
+      {%- if publisher_name == 'default' %}
+          - direct://
+      {%- endif %}
+      {%- if publisher_name == 'panko' %}
+          - panko://
+      {%- endif %}
+      {%- endfor %}

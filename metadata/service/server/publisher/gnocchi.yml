@@ -1,0 +1,7 @@
+parameters:
+  ceilometer:
+    server:
+      publisher:
+        gnocchi:
+          archive_policy: medium
+          filter_project: service

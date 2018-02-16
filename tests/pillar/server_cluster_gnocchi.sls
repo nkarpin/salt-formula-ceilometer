@@ -5,13 +5,20 @@ ceilometer:
     disk_polling_interval: 80
     network_polling_interval: 90
     debug: true
-    #region: RegionOne
+    region: RegionOne
     enabled: true
-    version: mitaka
+    version: pike
+    cluster: true
     secret: password
     ttl: 86400
+    dispatcher_gnocchi:
+      resources_definition_file: gnocchi_resource.yaml
+      request_timeout: 10.0
     publisher:
       default:
+      gnocchi:
+        archive_policy: medium
+        filter_project: service
     bind:
       host: 127.0.0.1
       port: 8777
@@ -25,27 +32,17 @@ ceilometer:
       endpoint_type: internalURL
     message_queue:
       engine: rabbitmq
-      host: 127.0.0.1
-      port: 5672
+      members:
+      - host: 127.0.0.1
+        port: 5672
+      - host: 127.0.0.1
+        port: 5672
+      - host: 127.0.0.1
+        port: 5672
       user: openstack
       password: password
       virtual_host: '/openstack'
-      ha_queues: true
       # Workaround for https://bugs.launchpad.net/ceilometer/+bug/1337715
       rpc_thread_pool_size: 5
     database:
-      engine: influxdb
-      influxdb:
-        host: 127.0.0.1
-        port: 8086
-        name: ceilometer
-        user: ceilometer
-        password: password
-        database: database
-      elasticsearch:
-        enabled: true
-        host: 127.0.0.1
-        port: 8086
-      policy:
-        segregation: 'rule:context_is_admin'
-        'telemetry:get_resource':
+      engine: gnocchi

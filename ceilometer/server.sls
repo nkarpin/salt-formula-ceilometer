@@ -5,8 +5,9 @@ ceilometer_server_packages:
   pkg.installed:
   - names: {{ server.pkgs }}
 
-/etc/ceilometer/ceilometer.conf:
+ceilometer_server_conf:
   file.managed:
+  - name: /etc/ceilometer/ceilometer.conf
   - source: salt://ceilometer/files/{{ server.version }}/ceilometer-server.conf.{{ grains.os_family }}
   - template: jinja
   - require:
@@ -113,7 +114,7 @@ rule_{{ name }}_absent:
 
 {%- for publisher_name, publisher in server.get('publisher', {}).items() %}
 
-{%- if publisher_name != "default" %}
+{%- if publisher_name not in ["default", "gnocchi", "panko"] %}
 
 ceilometer_publisher_{{ publisher_name }}_pkg:
   pkg.latest:
@@ -123,8 +124,9 @@ ceilometer_publisher_{{ publisher_name }}_pkg:
 
 {%- endfor %}
 
-/etc/ceilometer/pipeline.yaml:
+ceilometer_server_pipeline:
   file.managed:
+  - name: /etc/ceilometer/pipeline.yaml
   - source: salt://ceilometer/files/{{ server.version }}/pipeline.yaml
   - template: jinja
   - require:
@@ -132,8 +134,9 @@ ceilometer_publisher_{{ publisher_name }}_pkg:
 
 {%- if server.version != "kilo" %}
 
-/etc/ceilometer/event_pipeline.yaml:
+ceilometer_server_event_pipeline:
   file.managed:
+  - name: /etc/ceilometer/event_pipeline.yaml
   - source: salt://ceilometer/files/{{ server.version }}/event_pipeline.yaml
   - template: jinja
   - require:
@@ -141,8 +144,9 @@ ceilometer_publisher_{{ publisher_name }}_pkg:
   - watch_in:
     - service: ceilometer_server_services
 
-/etc/ceilometer/event_definitions.yaml:
+ceilometer_server_event_definitions:
   file.managed:
+  - name: /etc/ceilometer/event_definitions.yaml
   - source: salt://ceilometer/files/{{ server.version }}/event_definitions.yaml
   - template: jinja
   - require:
@@ -150,8 +154,9 @@ ceilometer_publisher_{{ publisher_name }}_pkg:
   - watch_in:
     - service: ceilometer_server_services
 
-/etc/ceilometer/gabbi_pipeline.yaml:
+ceilometer_server_gabbi_pipeline:
   file.managed:
+  - name: /etc/ceilometer/gabbi_pipeline.yaml
   - source: salt://ceilometer/files/{{ server.version }}/gabbi_pipeline.yaml
   - template: jinja
   - require:
@@ -188,15 +193,18 @@ ceilometer_api_config:
 
 ceilometer_apache_restart:
   service.running:
-  - enable: true
   - name: apache2
+  - enable: true
+  {%- if grains.get('noservices') %}
+  - onlyif: /bin/false
+  {%- endif %}
   - watch:
-    - file: /etc/ceilometer/ceilometer.conf
-    - file: ceilometer_api_apache_config
-    - file: /etc/ceilometer/event_definitions.yaml
-    - file: /etc/ceilometer/event_pipeline.yaml
-    - file: /etc/ceilometer/gabbi_pipeline.yaml
-    - file: /etc/ceilometer/pipeline.yaml
+    - file: ceilometer_server_conf
+    - file: ceilometer_api_config
+    - file: ceilometer_server_event_definitions
+    - file: ceilometer_server_event_pipeline
+    - file: ceilometer_server_gabbi_pipeline
+    - file: ceilometer_server_pipeline
 
 {%- endif %}
 
@@ -204,7 +212,10 @@ ceilometer_server_services:
   service.running:
   - names: {{ server.services }}
   - enable: true
+  {%- if grains.get('noservices') %}
+  - onlyif: /bin/false
+  {%- endif %}
   - watch:
-    - file: /etc/ceilometer/ceilometer.conf
+    - file: ceilometer_server_conf
 
 {%- endif %}

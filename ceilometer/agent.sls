@@ -5,8 +5,9 @@ ceilometer_agent_packages:
   pkg.installed:
   - names: {{ agent.pkgs }}
 
-/etc/ceilometer/ceilometer.conf:
+ceilometer_agent_conf:
   file.managed:
+  - name: /etc/ceilometer/ceilometer.conf
   - source: salt://ceilometer/files/{{ agent.version }}/ceilometer-agent.conf.{{ grains.os_family }}
   - template: jinja
   - require:
@@ -60,7 +61,7 @@ ceilometer_agent_fluentd_logger_package:
 
 {%- for publisher_name, publisher in agent.get('publisher', {}).items() %}
 
-{%- if publisher_name != "default" %}
+{%- if publisher_name not in ["default", "gnocchi"] %}
 
 ceilometer_publisher_{{ publisher_name }}_pkg:
   pkg.latest:
@@ -70,8 +71,9 @@ ceilometer_publisher_{{ publisher_name }}_pkg:
 
 {%- endfor %}
 
-/etc/ceilometer/pipeline.yaml:
+ceilometer_agent_pipeline:
   file.managed:
+  - name: /etc/ceilometer/pipeline.yaml
   - source: salt://ceilometer/files/{{ agent.version }}/pipeline.yaml
   - template: jinja
   - require:
@@ -79,8 +81,9 @@ ceilometer_publisher_{{ publisher_name }}_pkg:
 
 {%- if agent.version != "kilo" %}
 
-/etc/ceilometer/event_pipeline.yaml:
+ceilometer_agent_event_pipeline:
   file.managed:
+  - name: /etc/ceilometer/event_pipeline.yaml
   - source: salt://ceilometer/files/{{ agent.version }}/event_pipeline.yaml
   - template: jinja
   - require:
@@ -93,9 +96,15 @@ ceilometer_publisher_{{ publisher_name }}_pkg:
 ceilometer_agent_services:
   service.running:
   - names: {{ agent.services }}
+  {%- if grains.get('noservices') %}
+  - onlyif: /bin/false
+  {%- endif %}
   - enable: true
   - watch:
-    - file: /etc/ceilometer/ceilometer.conf
-    - file: /etc/ceilometer/pipeline.yaml
+    - file: ceilometer_agent_conf
+    - file: ceilometer_agent_pipeline
+{%- if agent.version != "kilo" %}
+    - file: ceilometer_agent_event_pipeline
+{%- endif %}
 
 {%- endif %}
